@@ -11,6 +11,8 @@
     "CACHE_TYPE": "memory",
     "STREMIO_ADDON": "true",
     "CORS_ORIGIN": "*",
-    "MCP_ENABLED": "true"
+    "MCP_ENABLED": "true",
+    "SERVER_URL": "https://stream-fetcher.vercel.app",
+    "APP_URL": "https://stream-fetcher.vercel.app"
   }
 }
