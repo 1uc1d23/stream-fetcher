@@ -128,25 +128,18 @@ const appPromise = main().catch((err) => {
     console.error("Framework initialization error:", err);
 });
 
+import serverless from 'serverless-http';
+
 // Export the serverless handler function for Vercel
 export default async function handler(req: any, res: any) {
     const serverInstance = await appPromise;
     if (serverInstance) {
-        const requestHandler = (serverInstance as any).handleRequest || 
-                               (serverInstance as any).handle || 
-                               (serverInstance as any).app;
-                               
-        if (typeof requestHandler === 'function') {
-            return requestHandler(req, res);
-        }
-        
-        if (typeof serverInstance === 'function') {
-            return (serverInstance as any)(req, res);
-        }
+        // Wrap the framework server directly using serverless-http
+        const serverlessHandler = serverless(serverInstance as any);
+        return serverlessHandler(req, res);
     }
     
-    // Native Node.js response fallback if framework routing fails
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: "Framework server failed to initialize or route requests" }));
+    res.end(JSON.stringify({ error: "Framework server failed to initialize" }));
 }
