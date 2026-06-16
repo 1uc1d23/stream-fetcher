@@ -1,22 +1,12 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/proxy.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "dist/server.js",
-      "use": "@vercel/node"
-    }
-  ],
   "rewrites": [
     {
       "source": "/v1/proxy",
       "destination": "/api/proxy.js"
     },
     {
-      "source": "/(.*)",
+      "source": "/v1/(.*)",
       "destination": "/dist/server.js"
     }
   ],
@@ -26,6 +16,6 @@
     "STREMIO_ADDON": "true",
     "CORS_ORIGIN": "*",
     "MCP_ENABLED": "true",
-    "PUBLIC_URL": "http://localhost:3000"
+    "PUBLIC_URL": "https://stream-fetcher.vercel.app"
   }
 }
