@@ -2,6 +2,7 @@ import { OMSSServer } from '@omss/framework';
 import 'dotenv/config';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import fs from 'node:fs';
 import { knownThirdPartyProxies } from './thirdPartyProxies.js';
 import { streamPatterns } from './streamPatterns.js';
 
@@ -13,12 +14,10 @@ async function main() {
         name: 'CinePro',
         version: '1.0.0',
 
-        // Network
         host: process.env.HOST ?? 'localhost',
         port: Number(process.env.PORT ?? 3000),
         publicUrl: process.env.PUBLIC_URL,
 
-        // Cache (memory for dev, Redis for prod)
         cache: {
             type: (process.env.CACHE_TYPE as 'memory' | 'redis') ?? 'memory',
             ttl: {
@@ -32,15 +31,13 @@ async function main() {
             }
         },
 
-        // TMDB
         tmdb: {
             apiKey: process.env.TMDB_API_KEY!,
-            cacheTTL: 24 * 60 * 60 // 24h
+            cacheTTL: 24 * 60 * 60
         },
 
-        // Third Party Proxy removal
         proxyConfig: {
-            knownThirdPartyProxies: knownThirdPartyProxies,
+            knownThirdPartyProxies,
             streamPatterns
         },
 
@@ -54,31 +51,41 @@ async function main() {
         },
 
         stremio: {
-            // exposes a stremio addon on /stremio/manifest.json
             enableNativeAddon: process.env.STREMIO_ADDON === 'true',
-            // you can your own custom stremio addons as sources into cinepro.
             stremioAddons: []
-            /*
-            stremioAddons: [
-                {
-                    id: 'some-unique-id',
-                    url: 'https://example.com/manifest.json',
-                    enabled: true
-                }
-            ]
-            */
         },
 
-        // MCP for AI agents
         mcp: {
             enabled: process.env.MCP_ENABLED === 'true'
         }
     });
 
-    // Register providers
     const registry = server.getRegistry();
-    console.log(path.join(__dirname, './providers/'));
-    await registry.discoverProviders(path.join(__dirname, './providers/'));
+
+    const providersPath = path.join(__dirname, './providers');
+
+    // 🔥 DEBUG 1: confirm path
+    console.log('Providers path:', providersPath);
+
+    // 🔥 DEBUG 2: show actual files Vercel sees
+    try {
+        console.log('Provider folders:', fs.readdirSync(providersPath));
+    } catch (e) {
+        console.error('Cannot read providers folder:', e);
+    }
+
+    // 🔥 LOAD PROVIDERS
+    try {
+        await registry.discoverProviders(providersPath);
+    } catch (e) {
+        console.error('discoverProviders error:', e);
+    }
+
+    // 🔥 DEBUG 3: final loaded providers
+    const loaded = registry.getProviders();
+
+    console.log('TOTAL LOADED PROVIDERS:', loaded.length);
+    console.log('PROVIDERS:', loaded.map(p => p.name));
 
     await server.start();
 
@@ -88,33 +95,10 @@ async function main() {
 
     const uiUrl = `https://ui.cinepro.cc/?omssurl=${encodeURIComponent(publicUrl)}`;
 
-    const title = '🚀 CinePro/ui is in public testing';
-    const contrib =
-        '🤝 We are looking for contributors to improve and develop!';
-    const repo = 'Contribute: https://github.com/cinepro-org/ui';
-    const tryIt = `🌐 Try it out: ${uiUrl} !`;
-    const note =
-        'You will need to give the website "access to local applications" that it works.';
-
-    const lines = [title, '', repo, '', contrib, '', tryIt, '', note];
-
-    // compute box width based on longest line
-    const width = Math.max(...lines.map((l) => l.length)) + 2;
-
-    const borderTop = '╭' + '─'.repeat(width) + '╮';
-    const borderBottom = '╰' + '─'.repeat(width) + '╯';
-
-    const pad = (line: string) => '│ ' + line.padEnd(width - 2, ' ') + ' │';
-
-    console.log(`
-================== CINEPRO BETA ANNOUNCEMENT ==================
-
-${borderTop}
-${lines.map(pad).join('\n')}
-${borderBottom}
-`);
+    console.log('UI:', uiUrl);
 }
 
-main().catch(() => {
+main().catch((err) => {
+    console.error('FATAL ERROR:', err);
     process.exit(1);
 });
