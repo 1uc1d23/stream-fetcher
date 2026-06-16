@@ -1,7 +1,7 @@
 {
   "version": 2,
   "functions": {
-    "dist/server.js": {
+    "src/server.ts": {
       "includeFiles": "src/providers/**"
     }
   },
@@ -12,7 +12,7 @@
     },
     {
       "source": "/v1/(.*)",
-      "destination": "/dist/server.js"
+      "destination": "/src/server.ts"
     }
   ],
   "env": {
