@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "dist/server.js": {
-      "includeFiles": "dist/providers/**"
+      "includeFiles": "src/providers/**"
     }
   },
   "rewrites": [
