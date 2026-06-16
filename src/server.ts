@@ -77,6 +77,7 @@ async function main() {
 
     // Register providers
     const registry = server.getRegistry();
+    console.log(path.join(__dirname, './providers/'));
     await registry.discoverProviders(path.join(__dirname, './providers/'));
 
     await server.start();
