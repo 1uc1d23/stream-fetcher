@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "dist/server.js": {
+      "includeFiles": "dist/providers/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/v1/proxy",
