@@ -82,7 +82,7 @@ async function main() {
     if (!process.env.VERCEL) {
         await server.start();
     } else {
-        // Initialize the framework internals for serverless routing without binding to a port
+        // Initialize framework internals for serverless environments if function exists
         if (typeof (server as any).init === 'function') {
             await (server as any).init();
         }
@@ -120,7 +120,6 @@ ${lines.map(pad).join('\n')}
 ${borderBottom}
 `);
 
-    // Return the server instance so the Vercel handler below can use it
     return server;
 }
 
@@ -133,7 +132,6 @@ const appPromise = main().catch((err) => {
 export default async function handler(req: any, res: any) {
     const serverInstance = await appPromise;
     if (serverInstance) {
-        // Use the native underlying request listener if handle doesn't exist directly
         const requestHandler = (serverInstance as any).handleRequest || 
                                (serverInstance as any).handle || 
                                (serverInstance as any).app;
@@ -142,10 +140,13 @@ export default async function handler(req: any, res: any) {
             return requestHandler(req, res);
         }
         
-        // Fallback: pass directly to the server object if it is an Express/Connect instance
         if (typeof serverInstance === 'function') {
             return (serverInstance as any)(req, res);
         }
     }
-    res.status(500).json({ error: "Framework server failed to initialize or route requests" });
+    
+    // Native Node.js response fallback if framework routing fails
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ error: "Framework server failed to initialize or route requests" }));
 }
