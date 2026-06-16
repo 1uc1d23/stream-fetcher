@@ -58,6 +58,15 @@ async function main() {
             enableNativeAddon: process.env.STREMIO_ADDON === 'true',
             // you can your own custom stremio addons as sources into cinepro.
             stremioAddons: []
+            /*
+            stremioAddons: [
+                {
+                    id: 'some-unique-id',
+                    url: 'https://example.com/manifest.json',
+                    enabled: true
+                }
+            ]
+            */
         },
 
         // MCP for AI agents
@@ -68,25 +77,9 @@ async function main() {
 
     // Register providers
     const registry = server.getRegistry();
-    
-    // Dynamically check if running in Vercel production vs local development
-    const providersPath = process.env.VERCEL
-        ? path.join(process.cwd(), './src/providers/')
-        : path.join(__dirname, './providers/');
-        
-    console.log(`[Server] Loading providers from: ${providersPath}`);
-    
-    await registry.discoverProviders(providersPath);
+    await registry.discoverProviders(path.join(__dirname, './providers/'));
 
-    // Only start the internal port-listening server if running locally
-    if (!process.env.VERCEL) {
-        await server.start();
-    } else {
-        // Initialize framework internals for serverless environments if function exists
-        if (typeof (server as any).init === 'function') {
-            await (server as any).init();
-        }
-    }
+    await server.start();
 
     const publicUrl =
         process.env.PUBLIC_URL ??
@@ -119,27 +112,8 @@ ${borderTop}
 ${lines.map(pad).join('\n')}
 ${borderBottom}
 `);
-
-    return server;
 }
 
-// Initialize the main app promise once
-const appPromise = main().catch((err) => {
-    console.error("Framework initialization error:", err);
+main().catch(() => {
+    process.exit(1);
 });
-
-import serverless from 'serverless-http';
-
-// Export the serverless handler function for Vercel
-export default async function handler(req: any, res: any) {
-    const serverInstance = await appPromise;
-    if (serverInstance) {
-        // Wrap the framework server directly using serverless-http
-        const serverlessHandler = serverless(serverInstance as any);
-        return serverlessHandler(req, res);
-    }
-    
-    res.statusCode = 500;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: "Framework server failed to initialize" }));
-}
