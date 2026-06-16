@@ -58,15 +58,6 @@ async function main() {
             enableNativeAddon: process.env.STREMIO_ADDON === 'true',
             // you can your own custom stremio addons as sources into cinepro.
             stremioAddons: []
-            /*
-            stremioAddons: [
-                {
-                    id: 'some-unique-id',
-                    url: 'https://example.com/manifest.json',
-                    enabled: true
-                }
-            ]
-            */
         },
 
         // MCP for AI agents
@@ -77,7 +68,15 @@ async function main() {
 
     // Register providers
     const registry = server.getRegistry();
-    await registry.discoverProviders(path.join(__dirname, './providers/'));
+    
+    // Dynamically check if running in Vercel production vs local development
+    const providersPath = process.env.VERCEL
+        ? path.join(process.cwd(), './src/providers/')
+        : path.join(__dirname, './providers/');
+        
+    console.log(`[Server] Loading providers from: ${providersPath}`);
+    
+    await registry.discoverProviders(providersPath);
 
     await server.start();
 
@@ -112,8 +111,33 @@ ${borderTop}
 ${lines.map(pad).join('\n')}
 ${borderBottom}
 `);
+
+    // Return the server instance so the Vercel handler below can use it
+    return server;
 }
 
-main().catch(() => {
-    process.exit(1);
+// Initialize the main app promise once
+const appPromise = main().catch((err) => {
+    console.error("Framework initialization error:", err);
 });
+
+// Export the serverless handler function for Vercel
+export default async function handler(req: any, res: any) {
+    const serverInstance = await appPromise;
+    if (serverInstance) {
+        // Use the native underlying request listener if handle doesn't exist directly
+        const requestHandler = (serverInstance as any).handleRequest || 
+                               (serverInstance as any).handle || 
+                               (serverInstance as any).app;
+                               
+        if (typeof requestHandler === 'function') {
+            return requestHandler(req, res);
+        }
+        
+        // Fallback: pass directly to the server object if it is an Express/Connect instance
+        if (typeof serverInstance === 'function') {
+            return (serverInstance as any)(req, res);
+        }
+    }
+    res.status(500).json({ error: "Framework server failed to initialize or route requests" });
+}
