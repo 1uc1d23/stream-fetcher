@@ -78,7 +78,15 @@ async function main() {
     
     await registry.discoverProviders(providersPath);
 
-    await server.start();
+    // Only start the internal port-listening server if running locally
+    if (!process.env.VERCEL) {
+        await server.start();
+    } else {
+        // Initialize the framework internals for serverless routing without binding to a port
+        if (typeof (server as any).init === 'function') {
+            await (server as any).init();
+        }
+    }
 
     const publicUrl =
         process.env.PUBLIC_URL ??
