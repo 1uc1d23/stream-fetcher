@@ -427,25 +427,15 @@ export class PeachifyProvider extends BaseProvider {
 
 
         const rawType = this.pickString(raw, [
-
             'type',
-
             'format',
-
             'container'
-
         ]).toLowerCase();
-
         const type: 'hls' | 'mp4' =
-
             rawType.includes('hls') ||
-
                 rawType.includes('m3u8') ||
-
                 url.toLowerCase().includes('.m3u8')
-
                 ? 'hls'
-
                 : 'mp4';
 
 

@@ -5,6 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { knownThirdPartyProxies } from './thirdPartyProxies.js';
 import { streamPatterns } from './streamPatterns.js';
+import { PeachifyProvider } from './providers/peachify/peachify.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -76,9 +77,9 @@ async function main() {
 
     // 🔥 LOAD PROVIDERS
     try {
-        await registry.discoverProviders(providersPath);
+        registry.register(new PeachifyProvider());
     } catch (e) {
-        console.error('discoverProviders error:', e);
+        console.error('Manual registration error:', e);
     }
 
     // 🔥 DEBUG 3: final loaded providers
