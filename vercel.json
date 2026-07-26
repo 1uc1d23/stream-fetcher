@@ -1,5 +1,6 @@
 {
   "version": 2,
+<<<<<<< HEAD
   "builds": [
     {
       "src": "index.js",
@@ -12,4 +13,29 @@
       "dest": "index.js"
     }
   ]
+=======
+  "functions": {
+    "src/server.ts": {
+      "includeFiles": "src/providers/**"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/v1/proxy",
+      "destination": "/api/proxy.js"
+    },
+    {
+      "source": "/v1/(.*)",
+      "destination": "/src/server.ts"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "CACHE_TYPE": "memory",
+    "STREMIO_ADDON": "true",
+    "CORS_ORIGIN": "*",
+    "MCP_ENABLED": "true",
+    "PUBLIC_URL": "https://stream-fetcher.vercel.app"
+  }
+>>>>>>> 4689184b4c1a61c8f72ff02d4fedfeccecf242d5
 }
