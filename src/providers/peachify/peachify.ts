@@ -248,6 +248,10 @@ export class PeachifyProvider extends BaseProvider {
 
         let body = (await response.json()) as PeachifyApiResponse;
 
+        console.log("[Peachify] API URL:", apiUrl);
+        console.log("[Peachify] Status:", response.status);
+        console.log("[Peachify] Body:", JSON.stringify(body).slice(0, 1000));
+
 
 
         if (body.isEncrypted && body.data) {
@@ -281,7 +285,6 @@ export class PeachifyProvider extends BaseProvider {
         const parsed = rawSources
 
             .map((s) => this.parseSource(s, serverName))
-
             .filter((s): s is PeachifyParsedSource => s !== null);
 
 
@@ -651,7 +654,7 @@ export class PeachifyProvider extends BaseProvider {
     }
 
 
-    
+
     /**
 
      * maps peachify dub label aliases to a clean display string.

@@ -42,17 +42,12 @@ async function importDecryptionKey(): Promise<webcrypto.CryptoKey> {
 }
 
 function parsePayload(payload: string): EncryptedPayload {
-    const parts = payload.split('.');
-    if (parts.length !== 3) {
-        throw new Error(
-            'Invalid payload format. Expected: iv.ciphertext.authTag'
-        );
-    }
-    const [ivPart, ciphertextPart, authTagPart] = parts;
+    const [ivPart, tagPart, cipherPart] = payload.split('.');
+
     return {
         iv: base64UrlToBytes(ivPart),
-        ciphertext: base64UrlToBytes(ciphertextPart),
-        authTag: base64UrlToBytes(authTagPart)
+        authTag: base64UrlToBytes(tagPart),
+        ciphertext: base64UrlToBytes(cipherPart)
     };
 }
 
@@ -63,10 +58,11 @@ export default async function decryptPayload(
         const { iv, ciphertext, authTag } = parsePayload(payload);
 
         const encryptedData = new Uint8Array(
-            ciphertext.length + authTag.length
+            authTag.length + ciphertext.length
         );
-        encryptedData.set(ciphertext);
-        encryptedData.set(authTag, ciphertext.length);
+
+        encryptedData.set(authTag, 0);
+        encryptedData.set(ciphertext, authTag.length);
 
         const key = await importDecryptionKey();
 
@@ -84,6 +80,6 @@ export default async function decryptPayload(
     } catch (error) {
         // Output clear diagnostics to local terminal
         console.error('[Peachify Decrypt Engine Error]:', error instanceof Error ? error.message : error);
-        return null;
+        throw error;
     }
 }
