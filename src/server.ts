@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { knownThirdPartyProxies } from './thirdPartyProxies.js';
 import { streamPatterns } from './streamPatterns.js';
+import { VidApiProvider } from './providers/vidapi/vidapi.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,17 +57,8 @@ async function main() {
         stremio: {
             // exposes a stremio addon on /stremio/manifest.json
             enableNativeAddon: process.env.STREMIO_ADDON === 'true',
-            // you can your own custom stremio addons as sources into cinepro.
+            // you can add your own custom stremio addons as sources into cinepro.
             stremioAddons: []
-            /*
-            stremioAddons: [
-                {
-                    id: 'some-unique-id',
-                    url: 'https://example.com/manifest.json',
-                    enabled: true
-                }
-            ]
-            */
         },
 
         // MCP for AI agents
@@ -75,9 +67,9 @@ async function main() {
         }
     });
 
-    // Register providers
+    // Register only VidApiProvider
     const registry = server.getRegistry();
-    await registry.discoverProviders(path.join(__dirname, './providers/'));
+    registry.register(new VidApiProvider());
 
     await server.start();
 
