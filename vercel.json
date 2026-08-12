@@ -1,6 +1,5 @@
 {
   "version": 2,
-<<<<<<< HEAD
   "builds": [
     {
       "src": "index.js",
@@ -12,8 +11,7 @@
       "src": "/(.*)",
       "dest": "index.js"
     }
-  ]
-=======
+  ],
   "functions": {
     "src/server.ts": {
       "includeFiles": "src/providers/**"
@@ -37,5 +35,4 @@
     "MCP_ENABLED": "true",
     "PUBLIC_URL": "https://stream-fetcher.vercel.app"
   }
->>>>>>> 4689184b4c1a61c8f72ff02d4fedfeccecf242d5
 }
