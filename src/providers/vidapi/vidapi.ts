@@ -15,7 +15,7 @@ export class VidApiProvider extends BaseProvider {
     readonly name = 'VidApi';
     readonly enabled = true;
     readonly BASE_URL = 'https://vaplayer.ru';
-    readonly IFRAME_URL = 'https://brightpathsignals.com';
+    readonly IFRAME_URL = 'https://nextgencloudfabric.com';
     readonly API_URL = 'https://streamdata.vaplayer.ru/api.php';
     readonly HEADERS = {
         'User-Agent':
@@ -62,7 +62,9 @@ export class VidApiProvider extends BaseProvider {
                 return this.emptyResult(`HTTP error: ${response.status}`);
             }
 
-            const json = (await response.json()) as unknown as VidApiResponse;
+            const json = (await response.json()) as unknown as VidApiResponse & {
+                thumbnails_url?: string;
+            };
 
             if (json.status_code !== '200' || !json.data) {
                 return this.emptyResult(
@@ -97,32 +99,16 @@ export class VidApiProvider extends BaseProvider {
                     };
                 }
             );
-            const subtitles: Subtitle[] = (json.default_subs ?? []).map(
-                (sub: {
-                    lang: string;
-                    code: string;
-                    url: string;
-                }): Subtitle => {
-                    // Detect subtitle format from file extension
-                    const ext = sub.url.split('.').pop()?.toLowerCase();
-                    const format =
-                        ext === 'vtt'
-                            ? 'vtt'
-                            : ext === 'ass'
-                              ? 'ass'
-                              : ext === 'ssa'
-                                ? 'ssa'
-                                : ext === 'ttml'
-                                  ? 'ttml'
-                                  : 'srt';
 
-                    return {
-                        url: sub.url,
-                        label: sub.lang,
-                        format
-                    };
-                }
-            );
+            const subtitles: Subtitle[] = [];
+            const thumbnailsUrl = json.thumbnails_url || (data as any).thumbnails_url;
+            if (thumbnailsUrl) {
+                subtitles.push({
+                    url: thumbnailsUrl,
+                    label: 'Thumbnails',
+                    format: 'vtt'
+                });
+            }
 
             return {
                 sources,
