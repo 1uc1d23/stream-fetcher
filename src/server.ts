@@ -2,10 +2,9 @@ import { OMSSServer } from '@omss/framework';
 import 'dotenv/config';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import fs from 'node:fs';
 import { knownThirdPartyProxies } from './thirdPartyProxies.js';
 import { streamPatterns } from './streamPatterns.js';
-import { PeachifyProvider } from './providers/peachify/peachify.js';
+import { VidApiProvider } from './providers/vidapi/vidapi.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,10 +14,12 @@ async function main() {
         name: 'CinePro',
         version: '1.0.0',
 
+        // Network
         host: process.env.HOST ?? 'localhost',
         port: Number(process.env.PORT ?? 3000),
         publicUrl: process.env.PUBLIC_URL,
 
+        // Cache (memory for dev, Redis for prod)
         cache: {
             type: (process.env.CACHE_TYPE as 'memory' | 'redis') ?? 'memory',
             ttl: {
@@ -32,13 +33,15 @@ async function main() {
             }
         },
 
+        // TMDB
         tmdb: {
             apiKey: process.env.TMDB_API_KEY!,
-            cacheTTL: 24 * 60 * 60
+            cacheTTL: 24 * 60 * 60 // 24h
         },
 
+        // Third Party Proxy removal
         proxyConfig: {
-            knownThirdPartyProxies,
+            knownThirdPartyProxies: knownThirdPartyProxies,
             streamPatterns
         },
 
@@ -52,41 +55,21 @@ async function main() {
         },
 
         stremio: {
+            // exposes a stremio addon on /stremio/manifest.json
             enableNativeAddon: process.env.STREMIO_ADDON === 'true',
+            // you can add your own custom stremio addons as sources into cinepro.
             stremioAddons: []
         },
 
+        // MCP for AI agents
         mcp: {
             enabled: process.env.MCP_ENABLED === 'true'
         }
     });
 
+    // Register only VidApiProvider
     const registry = server.getRegistry();
-
-    const providersPath = path.join(__dirname, './providers');
-
-    // 🔥 DEBUG 1: confirm path
-    console.log('Providers path:', providersPath);
-
-    // 🔥 DEBUG 2: show actual files Vercel sees
-    try {
-        console.log('Provider folders:', fs.readdirSync(providersPath));
-    } catch (e) {
-        console.error('Cannot read providers folder:', e);
-    }
-
-    // 🔥 LOAD PROVIDERS
-    try {
-        registry.register(new PeachifyProvider());
-    } catch (e) {
-        console.error('Manual registration error:', e);
-    }
-
-    // 🔥 DEBUG 3: final loaded providers
-    const loaded = registry.getProviders();
-
-    console.log('TOTAL LOADED PROVIDERS:', loaded.length);
-    console.log('PROVIDERS:', loaded.map(p => p.name));
+    registry.register(new VidApiProvider());
 
     await server.start();
 
@@ -96,10 +79,33 @@ async function main() {
 
     const uiUrl = `https://ui.cinepro.cc/?omssurl=${encodeURIComponent(publicUrl)}`;
 
-    console.log('UI:', uiUrl);
+    const title = '🚀 CinePro/ui is in public testing';
+    const contrib =
+        '🤝 We are looking for contributors to improve and develop!';
+    const repo = 'Contribute: https://github.com/cinepro-org/ui';
+    const tryIt = `🌐 Try it out: ${uiUrl} !`;
+    const note =
+        'You will need to give the website "access to local applications" that it works.';
+
+    const lines = [title, '', repo, '', contrib, '', tryIt, '', note];
+
+    // compute box width based on longest line
+    const width = Math.max(...lines.map((l) => l.length)) + 2;
+
+    const borderTop = '╭' + '─'.repeat(width) + '╮';
+    const borderBottom = '╰' + '─'.repeat(width) + '╯';
+
+    const pad = (line: string) => '│ ' + line.padEnd(width - 2, ' ') + ' │';
+
+    console.log(`
+================== CINEPRO BETA ANNOUNCEMENT ==================
+
+${borderTop}
+${lines.map(pad).join('\n')}
+${borderBottom}
+`);
 }
 
-main().catch((err) => {
-    console.error('FATAL ERROR:', err);
+main().catch(() => {
     process.exit(1);
 });
