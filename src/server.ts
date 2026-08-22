@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { knownThirdPartyProxies } from './thirdPartyProxies.js';
 import { streamPatterns } from './streamPatterns.js';
-import { VidApiProvider } from './providers/vidapi/vidapi.js';
+import { VideasyProvider } from './providers/videasy/videasy.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,9 +67,8 @@ async function main() {
         }
     });
 
-    // Register only VidApiProvider
     const registry = server.getRegistry();
-    registry.register(new VidApiProvider());
+    registry.register(new VideasyProvider());
 
     await server.start();
 

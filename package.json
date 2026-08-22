@@ -11,6 +11,7 @@
     },
     "dependencies": {
         "@omss/framework": "^1.1.19",
+        "@vercel/node": "^5.9.9",
         "cheerio": "^1.2.0",
         "crypto-js": "^4.2.0",
         "dotenv": "^16.4.5"

@@ -16,44 +16,9 @@ import { decryptResponse } from './decryptor.js';
  */
 
 const VIDEASY_SERVERS: readonly VideasyServer[] = [
-    // { name: 'primesrcme', url: 'https://api.videasy.net/primesrcme/sources-with-title' },
-    // { name: 'm4uhd',      url: 'https://api.videasy.net/m4uhd/sources-with-title' },
-    // { name: 'meine-de',   url: 'https://api.videasy.net/meine/sources-with-title', language: 'german' },
-    // { name: 'meine-it',   url: 'https://api.videasy.net/meine/sources-with-title', language: 'italian' },
-    // { name: 'meine-fr',   url: 'https://api.videasy.net/meine/sources-with-title', language: 'french' },
-    // { name: 'overflix',    url: 'https://api2.videasy.net/overflix/sources-with-title',   language: 'english' },
-    // { name: 'visioncine',  url: 'https://api.videasy.net/visioncine/sources-with-title',  language: 'english' },
-    // { name: 'hdmovie',     url: 'https://api.videasy.net/hdmovie/sources-with-title',     language: 'english' },
-    // { name: 'primewire',   url: 'https://api2.videasy.net/primewire/sources-with-title',  language: 'english' },
-
     {
-        name: 'cuevana',
-        url: 'https://api2.videasy.net/cuevana/sources-with-title',
-        language: 'english'
-    },
-    {
-        name: 'mb-flix',
-        url: 'https://api.videasy.net/mb-flix/sources-with-title',
-        language: 'english'
-    },
-    {
-        name: '1movies',
-        url: 'https://api.videasy.net/1movies/sources-with-title',
-        language: 'english'
-    },
-    {
-        name: 'cdn',
-        url: 'https://api.videasy.net/cdn/sources-with-title',
-        language: 'english'
-    },
-    {
-        name: 'superflix',
-        url: 'https://api.videasy.net/superflix/sources-with-title',
-        language: 'english'
-    },
-    {
-        name: 'lamovie',
-        url: 'https://api.videasy.net/lamovie/sources-with-title',
+        name: 'videasy',
+        url: 'https://api.speedracelight.com/cdn/sources-with-title',
         language: 'english'
     }
 ] as const;
@@ -62,13 +27,13 @@ export class VideasyProvider extends BaseProvider {
     readonly id = 'Videasy';
     readonly name = 'Videasy';
     readonly enabled = true;
-    readonly BASE_URL = 'https://api.videasy.net';
+    readonly BASE_URL = 'https://api.videasy.to';
     readonly HEADERS = {
         'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         Accept: 'application/json, */*; q=0.01',
-        Referer: 'https://player.videasy.net/',
-        Origin: 'https://player.videasy.net'
+        Referer: 'https://player.videasy.to/',
+        Origin: 'https://player.videasy.to'
     };
 
     readonly capabilities: ProviderCapabilities = {
@@ -135,51 +100,130 @@ export class VideasyProvider extends BaseProvider {
         server: VideasyServer,
         media: ProviderMediaObject
     ): Promise<ProviderResult | null> {
-        const params = this.buildParams(server, media);
-        const url = `${server.url}?${new URLSearchParams(params as Record<string, string>)}`;
-        const response = await fetch(url, { headers: this.HEADERS });
+        try {
+            // 1. Get seed
+            const seedUrl =
+                `https://api.speedracelight.com/seed?mediaId=${media.tmdbId}`;
 
-        if (!response.ok) {
-            return this.emptyResult('invalid response', media);
+            const seedResponse = await fetch(seedUrl, {
+                headers: this.HEADERS
+            });
+
+            if (!seedResponse.ok) {
+                console.error(
+                    `[Videasy:${server.name}] Seed request failed: ${seedResponse.status}`
+                );
+                return null;
+            }
+
+            const seedData = (await seedResponse.json()) as {
+                seed?: string;
+                ttlMs?: number;
+            };
+
+            if (!seedData.seed) {
+                console.error(`[Videasy:${server.name}] No seed returned`);
+                return null;
+            }
+
+            // 2. Build sources request
+            const params = {
+                ...this.buildParams(server, media),
+                enc: '2',
+                seed: seedData.seed
+            };
+
+            const url =
+                `${server.url}?` +
+                new URLSearchParams(params).toString();
+
+            console.log(`[Videasy:${server.name}] ${url}`);
+
+            const response = await fetch(url, {
+                headers: this.HEADERS
+            });
+
+            if (!response.ok) {
+                console.error(
+                    `[Videasy:${server.name}] HTTP ${response.status}`
+                );
+                return null;
+            }
+
+            // 3. Read encrypted response
+            const blob = await response.text();
+
+            console.log('[Videasy] response content-type:',
+                response.headers.get('content-type')
+            );
+
+            console.log('[Videasy] blob length:', blob.length);
+            console.log('[Videasy] blob:', blob.slice(0, 300));
+
+
+            if (!blob || blob.length < 10) {
+                console.error(
+                    `[Videasy:${server.name}] Empty response`
+                );
+                return null;
+            }
+
+            // 4. Decrypt
+            const decrypted = await decryptResponse(
+                blob,
+                String(media.tmdbId),
+                seedData.seed
+            );
+
+
+            if (!decrypted || decrypted.sources.length === 0) {
+                console.error(
+                    `[Videasy:${server.name}] Decryption returned no sources`
+                );
+                return null;
+            }
+
+            // 5. Map sources
+            const sources: ProviderResult['sources'] =
+                decrypted.sources
+                    .filter((s) => !!s?.url)
+                    .map((s) => ({
+                        url: this.createProxyUrl(s.url, this.HEADERS),
+                        type: this.detectType(s.url, s.type),
+                        quality: this.normalizeQuality(s.quality),
+                        audioTracks: [
+                            {
+                                language: this.resolveLanguage(server),
+                                label: this.resolveLanguageLabel(server)
+                            }
+                        ],
+                        provider: {
+                            id: this.id,
+                            name: this.name
+                        }
+                    }));
+
+            const subtitles: ProviderResult['subtitles'] =
+                decrypted.subtitles
+                    .filter((s) => !!s?.url)
+                    .map((s) => ({
+                        url: this.createProxyUrl(s.url, {}),
+                        label: s.lang ?? s.language ?? 'Unknown',
+                        format: 'vtt' as const
+                    }));
+
+            return {
+                sources,
+                subtitles,
+                diagnostics: []
+            };
+        } catch (error) {
+            console.error(
+                `[Videasy:${server.name}] Error:`,
+                error
+            );
+            return null;
         }
-
-        // api returns plain text hex blob, not json
-        const blob = await response.text();
-
-        if (!blob || blob.length < 10) {
-            return this.emptyResult('INVALID RESPONSE', media);
-        }
-
-        const decrypted = await decryptResponse(blob, String(media.tmdbId));
-
-        if (!decrypted || decrypted.sources.length === 0) {
-            return this.emptyResult('Unable to Decode', media);
-        }
-
-        const sources: ProviderResult['sources'] = decrypted.sources
-            .filter((s) => !!s?.url)
-            .map((s) => ({
-                url: this.createProxyUrl(s.url, this.HEADERS),
-                type: this.detectType(s.url, s.type),
-                quality: this.normalizeQuality(s.quality),
-                audioTracks: [
-                    {
-                        language: this.resolveLanguage(server),
-                        label: this.resolveLanguageLabel(server)
-                    }
-                ],
-                provider: { id: this.id, name: this.name }
-            }));
-
-        const subtitles: ProviderResult['subtitles'] = decrypted.subtitles
-            .filter((s) => !!s?.url)
-            .map((s) => ({
-                url: this.createProxyUrl(s.url, {}),
-                label: s.lang ?? s.language ?? 'Unknown',
-                format: 'vtt' as const
-            }));
-
-        return { sources, subtitles, diagnostics: [] };
     }
 
     // builds query params — title passed as plain string, URLSearchParams handles encoding
